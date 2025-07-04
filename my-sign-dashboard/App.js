@@ -1,15 +1,33 @@
 import React, { useEffect, useState } from "react";
-import { View, Text, FlatList, TouchableOpacity, Button, Linking, StyleSheet, ScrollView, ActivityIndicator } from "react-native";
+import {
+  View,
+  Text,
+  FlatList,
+  TouchableOpacity,
+  Button,
+  Linking,
+  StyleSheet,
+  ScrollView,
+  ActivityIndicator,
+  Image,
+} from "react-native";
 import { WebView } from "react-native-webview";
 
 // 1. 문서ID 스프레드시트에서 보드 목록을 불러오는 API (Google Apps Script로 구현 필요)
-const BOARD_LIST_API = "https://script.google.com/macros/s/AKfycby85JNA47vSlWqSfBT9cBb8YOZbGStIP4D295UUDRy58gJKWNA6OzyidTMwbuzJyA7u/exec?action=listBoards"; // 예시
+const BOARD_LIST_API =
+  "https://script.google.com/macros/s/AKfycby85JNA47vSlWqSfBT9cBb8YOZbGStIP4D295UUDRy58gJKWNA6OzyidTMwbuzJyA7u/exec?action=listBoards"; // 예시
 
 // 값이 객체면 빈 문자열로 변환하는 함수
 function safeText(val) {
   if (val === undefined || val === null) return "";
   if (typeof val === "object") return "";
   return String(val);
+}
+
+// 여러 URL 중 첫 번째만 추출하는 함수
+function getFirstUrl(val) {
+  if (!val) return "";
+  return val.replace("@", "").trim().split(/\s+/)[0];
 }
 
 export default function App() {
@@ -23,10 +41,12 @@ export default function App() {
   useEffect(() => {
     setLoading(true);
     fetch(BOARD_LIST_API)
-      .then(res => res.json())
-      .then(data => {
+      .then((res) => res.json())
+      .then((data) => {
         console.log("보드 데이터:", data);
-        setBoards(data.filter(b => b.latestUrl && b.latestUrl.startsWith("http")));
+        setBoards(
+          data.filter((b) => b.latestUrl && b.latestUrl.startsWith("http"))
+        );
         setLoading(false);
       })
       .catch((err) => {
@@ -39,8 +59,8 @@ export default function App() {
   const fetchDocs = (webappUrl) => {
     setLoading(true);
     fetch(`${webappUrl}?action=list`)
-      .then(res => res.json())
-      .then(data => {
+      .then((res) => res.json())
+      .then((data) => {
         console.log("문서 리스트 데이터:", data);
         setDocs(data);
         setLoading(false);
@@ -67,11 +87,11 @@ export default function App() {
           <Text>내용2: {safeText(selectedDoc.content2)}</Text>
           <Text>내용3: {safeText(selectedDoc.content3)}</Text>
           <Text>내용4: {safeText(selectedDoc.content4)}</Text>
-          <Text>팀장: {safeText(selectedDoc.teamLeaderSign)}</Text>
-          <Text>검토자: {safeText(selectedDoc.reviewerSign)}</Text>
-          <Text>대표자: {safeText(selectedDoc.ceoSign)}</Text>
         </View>
-        <Button title="서명하기" onPress={() => Linking.openURL(selectedDoc.signUrl)} />
+        <Button
+          title="서명하기"
+          onPress={() => Linking.openURL(selectedDoc.signUrl)}
+        />
       </ScrollView>
     );
   }
@@ -80,8 +100,16 @@ export default function App() {
   if (selectedBoard) {
     return (
       <View style={styles.container}>
-        <Button title="← 보드 선택으로" onPress={() => { setSelectedBoard(null); setDocs([]); }} />
-        <Text style={styles.title}>{safeText(selectedBoard.boardName)} 문서 리스트</Text>
+        <Button
+          title="← 보드 선택으로"
+          onPress={() => {
+            setSelectedBoard(null);
+            setDocs([]);
+          }}
+        />
+        <Text style={styles.title}>
+          {safeText(selectedBoard.boardName)} 문서 리스트
+        </Text>
         <FlatList
           data={docs}
           keyExtractor={(_, idx) => idx.toString()}
@@ -91,8 +119,59 @@ export default function App() {
                 <Text style={styles.bold}>{safeText(item.docName)}</Text>
                 <Text>작성자: {safeText(item.author)}</Text>
                 <Text>타임스탬프: {safeText(item.timestamp)}</Text>
-                <Text>내용: {safeText(item.content1)} {safeText(item.content2)} {safeText(item.content3)} {safeText(item.content4)}</Text>
-                <Text>팀장: {safeText(item.teamLeaderSign)} / 검토자: {safeText(item.reviewerSign)} / 대표자: {safeText(item.ceoSign)}</Text>
+                <Text>
+                  내용: {safeText(item.content1)} {safeText(item.content2)}{" "}
+                  {safeText(item.content3)} {safeText(item.content4)}
+                </Text>
+                <Text
+                  style={{
+                    marginTop: 10,
+                    marginBottom: 10,
+                    flexDirection: "row",
+                    alignItems: "center",
+                  }}
+                >
+                  팀장:{" "}
+                  {item.teamLeaderSignUrl &&
+                  item.teamLeaderSignUrl
+                    .replace("@", "")
+                    .trim()
+                    .startsWith("http") ? (
+                    <Image
+                      source={{
+                        uri: item.teamLeaderSignUrl.replace("@", "").trim(),
+                      }}
+                      style={styles.sigImg}
+                    />
+                  ) : (
+                    "❌"
+                  )}
+                  {" / "}검토자:{" "}
+                  {item.reviewerSignUrl &&
+                  item.reviewerSignUrl
+                    .replace("@", "")
+                    .trim()
+                    .startsWith("http") ? (
+                    <Image
+                      source={{
+                        uri: item.reviewerSignUrl.replace("@", "").trim(),
+                      }}
+                      style={styles.sigImg}
+                    />
+                  ) : (
+                    "❌"
+                  )}
+                  {" / "}대표자:{" "}
+                  {item.ceoSignUrl &&
+                  item.ceoSignUrl.replace("@", "").trim().startsWith("http") ? (
+                    <Image
+                      source={{ uri: item.ceoSignUrl.replace("@", "").trim() }}
+                      style={styles.sigImg}
+                    />
+                  ) : (
+                    "❌"
+                  )}
+                </Text>
               </View>
             </TouchableOpacity>
           )}
@@ -107,7 +186,7 @@ export default function App() {
       <Text style={styles.title}>보드 선택</Text>
       <FlatList
         data={boards}
-        keyExtractor={item => item.boardName}
+        keyExtractor={(item) => item.boardName}
         renderItem={({ item }) => (
           <TouchableOpacity
             style={styles.card}
@@ -127,8 +206,29 @@ export default function App() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#f5f5f5", paddingTop: 40 },
-  title: { fontSize: 22, fontWeight: "bold", textAlign: "center", marginBottom: 10 },
-  card: { backgroundColor: "#fff", margin: 8, borderRadius: 10, padding: 16, elevation: 2 },
+  title: {
+    fontSize: 22,
+    fontWeight: "bold",
+    textAlign: "center",
+    marginBottom: 10,
+  },
+  card: {
+    backgroundColor: "#fff",
+    margin: 8,
+    borderRadius: 10,
+    padding: 16,
+    elevation: 2,
+  },
   bold: { fontWeight: "bold", fontSize: 16, marginBottom: 4 },
   linkText: { color: "#1976d2", marginTop: 4 },
+  sigImg: {
+    width: 20,
+    height: 20,
+    marginLeft: 5,
+    marginRight: 5,
+  },
+  sigNone: {
+    marginLeft: 5,
+    marginRight: 5,
+  },
 });
